@@ -6,8 +6,8 @@
   "scripts": {
     "test": "node ./tests/test.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["ison", "hmac", "rsa", "ecdsa"],
+  "author": "Hoon Kook Shim. <lscorpio0717@gmail.com>",
   "license": "MIT",
   "type": "module",
   "dependencies": {
