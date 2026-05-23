@@ -1,7 +1,9 @@
 #include <napi.h>
-#include "./ison.h"
+#include <cmath>
 
-Napi::Value encodeInt(const Napi::CallbackInfo& info) {
+#include "./men.h"
+
+Napi::Value encode(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsNumber()) {
@@ -10,19 +12,21 @@ Napi::Value encodeInt(const Napi::CallbackInfo& info) {
         return env.Null();
     }
 
-	char resultIson[MAX_ISON_LENGTH];
+	char result_men[MAX_MEN_LENGTH];
 
-    // JS Number -> int64_t.
-    int64_t input = info[0].As<Napi::Number>().Int64Value();
+	// JS Number -> double.
+	double input_double = info[0].As<Napi::Number>().DoubleValue();
 
-    // Performing encoding.
-    encode_int(input, resultIson);
+	bool is_integer = std::floor(input_double) == input_double;
+
+	if(is_integer) encode_int64(static_cast<int64_t>(input_double), result_men);
+	else encode_float64(input_double, result_men);
 
     // Return as JS string.
-    return Napi::String::New(env, resultIson);
+    return Napi::String::New(env, result_men);
 }
 
-Napi::Value decodeInt(const Napi::CallbackInfo& info) {
+Napi::Value decode(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
     if(info.Length() < 1 || !info[0].IsString()) {
@@ -35,12 +39,22 @@ Napi::Value decodeInt(const Napi::CallbackInfo& info) {
     try {
         std::string input = info[0].As<Napi::String>().Utf8Value();
 
-		char isonStr[MAX_ISON_LENGTH];
-		std::strcpy(isonStr, input.c_str());
+		char men_str[MAX_MEN_LENGTH];
+		std::strcpy(men_str, input.c_str());
 
-        int64_t decoded = decode_int(isonStr);
-
-        return Napi::Number::New(env, decoded);
+		if(men_str[0] == FLOAT64_MARKER) {
+			double decoded = decode_float64(men_str);
+			return Napi::Number::New(env, decoded);
+		}
+		else if(men_str[0] == POSITIVE_MARKER || men_str[0] == NEGATIVE_MARKER) {
+        	int64_t decoded = decode_int64(men_str);
+	        return Napi::Number::New(env, decoded);
+		}
+		else {
+			Napi::TypeError::New(env, "Not a number-type men string")
+				.ThrowAsJavaScriptException();
+			return env.Null();
+		}
     }
     catch (const std::exception& e) {
         Napi::Error::New(env, e.what())
@@ -53,11 +67,11 @@ Napi::Value decodeInt(const Napi::CallbackInfo& info) {
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set(
         Napi::String::New(env, "encode"),
-        Napi::Function::New(env, encodeInt)
+        Napi::Function::New(env, encode)
     );
     exports.Set(
         Napi::String::New(env, "decode"),
-        Napi::Function::New(env, decodeInt)
+        Napi::Function::New(env, decode)
     );
     return exports;
 }

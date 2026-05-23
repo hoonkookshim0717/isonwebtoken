@@ -4,7 +4,7 @@
 			"target_name": "addon",
 			"sources": [
 				"addon.cc",
-				"ison.cc"
+				"men.cc"
 			],
 
 			"include_dirs": [

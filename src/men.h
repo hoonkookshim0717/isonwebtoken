@@ -1,5 +1,5 @@
-#include "ison.h"
-#include <stdexcept>
+#pragma once
+
 #include <cstdint>
 
 static const unsigned char base64url_encode_table[] =
@@ -28,41 +28,15 @@ static const unsigned char base64url_decode_table[] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };  // 0xF0~0xFF
 
-int64_t decode_int(char* input) {
-    int64_t result = 0;
+constexpr char POSITIVE_MARKER = '.';
+constexpr char NEGATIVE_MARKER = '!';
+constexpr char STRING_MARKER = '~';
+constexpr char FLOAT64_MARKER = '(';
 
-    for(std::size_t i = 1; input[i] != '\0'; i++) {
-        unsigned char v = base64url_decode_table[(unsigned char)input[i]];
-        if(v == 0xFF) throw std::invalid_argument("Invalid character exists in the string");   // Invalid character input. Returns an error.
+constexpr int MAX_MEN_LENGTH = 13;
 
-        result <<= 6;
-        result |= v;
-    }
-    if(input[0] == NEGATIVE_MARKER) result = ~result;
+void encode_int64(int64_t value, char* resultMen);
+void encode_float64(double value, char* resultMen);
 
-    return result;
-}
-
-void encode_int(int64_t value, char* result_ison) {
-
-    if(value >= 0) result_ison[0] = POSITIVE_MARKER;
-    else {
-        result_ison[0] = NEGATIVE_MARKER;
-        value = ~value;
-    }
-	
-	int ison_index = 1;
-
-    // Set starting point.
-    int leading = __builtin_clzll(value);
-    int shift_index = 60 - ((leading / 6) * 6);
-
-    // Encoding.
-    for(; shift_index >= 0; shift_index -= 6) {
-		result_ison[ison_index++] = base64url_encode_table[((value >> shift_index) & 0x3F)];
-		if(ison_index >= MAX_ISON_LENGTH) throw std::invalid_argument("Number too large.");
-	}
-	result_ison[ison_index] = '\0';
-}
-
-
+int64_t decode_int64(char *input);
+double decode_float64(char *input);

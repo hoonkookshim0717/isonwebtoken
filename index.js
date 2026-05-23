@@ -1,23 +1,23 @@
 import TokenEnv from './lib/tokenEnv.js';
-import ISON from './lib/ison.js';
+import MEN from './lib/men.js';
 import Key from './lib/key.js';
 
-function isonWebToken(settings) {
+function miniWebToken(settings) {
 	return new TokenEnv(settings);
 }
 
 // Built-in fuctions.
-isonWebToken.expIn = Key.expIn;
+miniWebToken.expIn = Key.expIn;
 
 // Constatns for ttl.
-const TTL_HOUR = 60 * 60;
-const TTL_DAY = 24 * 60 * 60;
+const TTL_HOUR = Key.TTL_HOUR;
+const TTL_DAY = Key.TTL_DAY;
 
 // constants for basetime.
-const SINCE_EPOCH = 0;
-const SINCE_2000 = 946684800;
-const SINCE_2020 = 1577836800;
-const SINCE_2026 = 1767225600;
+const SINCE_EPOCH = Key.SINCE_EPOCH;
+const SINCE_2000 = Key.SINCE_2000;
+const SINCE_2020 = Key.SINCE_2020;
+const SINCE_2026 = Key.SINCE_2026;
 
-export default isonWebToken;
+export default miniWebToken;
 export { TTL_HOUR, TTL_DAY, SINCE_EPOCH, SINCE_2000, SINCE_2020, SINCE_2026 };

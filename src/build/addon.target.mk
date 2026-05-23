@@ -46,7 +46,7 @@ INCS_Debug := \
 	-I/home/aatech/.cache/node-gyp/22.18.0/deps/uv/include \
 	-I/home/aatech/.cache/node-gyp/22.18.0/deps/zlib \
 	-I/home/aatech/.cache/node-gyp/22.18.0/deps/v8/include \
-	-I/var/mounts/nvm0828/dev/modules/isonwebtoken/node_modules/node-addon-api
+	-I/var/mounts/nvm0828/dev/lscorpioProjects/miniwebtoken/node_modules/node-addon-api
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=addon' \
@@ -90,11 +90,11 @@ INCS_Release := \
 	-I/home/aatech/.cache/node-gyp/22.18.0/deps/uv/include \
 	-I/home/aatech/.cache/node-gyp/22.18.0/deps/zlib \
 	-I/home/aatech/.cache/node-gyp/22.18.0/deps/v8/include \
-	-I/var/mounts/nvm0828/dev/modules/isonwebtoken/node_modules/node-addon-api
+	-I/var/mounts/nvm0828/dev/lscorpioProjects/miniwebtoken/node_modules/node-addon-api
 
 OBJS := \
 	$(obj).target/$(TARGET)/addon.o \
-	$(obj).target/$(TARGET)/ison.o
+	$(obj).target/$(TARGET)/men.o
 
 # Add to the list of files we specially track dependencies for.
 all_deps += $(OBJS)
