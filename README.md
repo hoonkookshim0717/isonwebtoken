@@ -2,21 +2,47 @@
 Implementation of web token, focused on minimizing the size of the token.
 
 # Characteristics.
-1. Only 1 signature, integers and strings can be stored in the token. Arrays, real numbers are not supported.
-2. Names of the data, like 'user_id', or 'user_name' is not stored in the token to reduce the size of token.
-3. Instead, names of the data are stored in the tokenEnv object, and those are used for payload recovery.
-4. Integers are encoded from integer itself to string using base64, not from stringified numbers.
-5. Expiry dates are not mandatory. But some custom functions can be used to implement expiry date.
+1. signature, numbers(integer or double) and strings can be stored in the token.
+2. Names of the properties of a payload, like 'user_id', or 'user_name' is not stored in the token to reduce the size of token.
+3. Numbers are encoded from number itself(64bit double or integer), not from stringified numbers.
+4. Meta data like expiry timestamp are not mandatory. ExpIn(TTL) or ExpA is available to use.
+5. User can set custom post-processing functions for each properties to construct output payload.
 
-| **Build**                                                                                                                               | **Dependency**                                                                                                         |
-|-----------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| [![Build Status](https://secure.travis-ci.org/auth0/node-jsonwebtoken.svg?branch=master)](http://travis-ci.org/auth0/node-jsonwebtoken) | [![Dependency Status](https://david-dm.org/auth0/node-jsonwebtoken.svg)](https://david-dm.org/auth0/node-jsonwebtoken) |
+## * Size of the token.
+Example of a token, using hs256 algorithm to sign:
+```js
+
+import mwt from 'miniwebtoken';
+import { TTL_HOUR, SINCE_2026 } from 'miniwebtoken';
+
+const samplePayload = {
+	user_id: 2583,
+	user_nickname: 'KilDong Hong',
+	user_group: -100,
+	user_roles: 187,
+	grade: 1.2,
+}
+
+const tokenEnv = mwt({
+	alg: 'hs256',
+	secretKey: 'testpass',
+});
+
+tokenEnv.set(mwt.expIn(TTL_HOUR, SINCE_2026));
+const resultMwtStr = tokenEnv.sign(samplePayload);		
+console.log("Legnth of mwt: ", resultMwtStr.length);    // 88
+
+// In a router.
+const recoveredObj = tokenEnv.verify(resultMwtStr);
+```
+
+The size of the token constructed from 'samplePayload' is only 88 bytes, including signature, which is 43 bytes long.
 
 
-An implementation of [JSON Web Tokens](https://tools.ietf.org/html/rfc7519).
-
-This was developed against `draft-ietf-oauth-json-web-token-08`. It makes use of [node-jws](https://github.com/brianloveswords/node-jws)
-
+Instead, names of the properties are stored in the tokenEnv object, and those are used for payload construction during verifying process.
+  By this way, security can be improved, by not showing the name of the properties.
+   By this feature, resulting payload can contain properties whose source didn't have, like 'isOwner' property(boolean) extracted from 'user_roles' property.
+   
 # Install
 
 ```bash
@@ -26,72 +52,25 @@ $ npm install miniwebtoken
 
 # Usage
 
-## 1. Initializing
-
-### miniwebtoken(options)
-
-Returns an object, which contains the data for issuing tokens and verifying it.
-
-`options` could be an object literal, buffer or string representing valid JSON. 
-> **Please _note_ that** `exp` or any other claim is only set if the payload is an object literal. Buffer or string payloads are not checked for JSON validity.
-
-> If `payload` is not a buffer or a string, it will be coerced into a string using `JSON.stringify`.
-
-`secretOrPrivateKey` is a string (utf-8 encoded), buffer, object, or KeyObject containing either the secret for HMAC algorithms or the PEM
-encoded private key for RSA and ECDSA. In case of a private key with passphrase an object `{ key, passphrase }` can be used (based on [crypto documentation](https://nodejs.org/api/crypto.html#crypto_sign_sign_private_key_output_format)), in this case be sure you pass the `algorithm` option.
-When signing with RSA algorithms the minimum modulus length is 2048 except when the allowInsecureKeySizes option is set to true. Private keys below this size will be rejected with an error.
-
-`options`:
-
-* `alg` (default: `hs256`)
-
-* `notBefore`: expressed in seconds or a string describing a time span [vercel/ms](https://github.com/vercel/ms). 
-  > Eg: `60`, `"2 days"`, `"10h"`, `"7d"`. A numeric value is interpreted as a seconds count. If you use a string be sure you provide the time units (days, hours, etc), otherwise milliseconds unit is used by default (`"120"` is equal to `"120ms"`).
-* `secretKey`
-* `privateKey`
-* `publicKey`
-
-
-
-
-> There are no default values for `expiresIn`, `notBefore`, `audience`, `subject`, `issuer`.  These claims can also be provided in the payload directly with `exp`, `nbf`, `aud`, `sub` and `iss` respectively, but you **_can't_** include in both places.
-
-Remember that `exp`, `nbf` and `iat` are **NumericDate**, see related [Token Expiration (exp claim)](#token-expiration-exp-claim)
-
-
-The header can be customized via the `options.header` object.
-
-Generated jwts will include an `iat` (issued at) claim by default unless `noTimestamp` is specified. If `iat` is inserted in the payload, it will be used instead of the real timestamp for calculating other things like `exp` given a timespan in `options.expiresIn`.
-
-## 2. Setting keys
-Prior to the actual signing, keys, which mean the name of the property of a payload, should be set.
+## Overall flow.
 ```js
-tokenEnv.set("user_id", "user_name", "user_roles");
-```
-
-These names don't go into the token itself. tokenEnv stores it sequentially, and use those to recover payload while verifying token.
-
-## 3. Setting expiry date.
-
-I've never mentioned about the token expiry so far.
-Setting the expiry date or storing the timestamp of issuing the token is not mandatory in miniwebtoken.
-For example, in a service in which every token issued 
-
-## signing a payload.
-
-Get a signed token with default HMAC SHA256 algorithm.
-
-```js
+// using hmac
 import mwt from 'miniwebtoken';
+import { TTL_HOUR, SINCE_EPOCH } from 'miniwebtoken';
 
-const tokenEnv = mwt({ alg: 'hs256', secretKey: 'pass' });
-tokenEnv.set('user_id', 'user_name');
+const samplePayload = { user_id: 1, user_name: 'KilDong Hong' };
 
-const payload = { user_id: 1, user_name: 'KilDong Hong' };
+// Initializing.
+const tokenEnv = mwt({ alg: 'hs256', secretKey: 'testpass' });
+tokenEnv.set(mwt.expIn(TTL_HOUR));    // Set expiration time an hour after token generation.
 
-const token = mwt.sign(payload);    // In a login handler or refresh handler.
+// Signing.(Including initializing)
+const mwtStr = mwt.sign(payload);    // In a login handler or refresh handler.
 ...
-const result = mwt.verify(token);    // In a router.
+
+// Verifying and reconstruct payload.
+const result = mwt.verify(mwtStr);    // In a router.
+
 ```
 
 Get a signed token with RSA SHA25 algorithm, and verifying it.
@@ -99,289 +78,100 @@ Get a signed token with RSA SHA25 algorithm, and verifying it.
 ```js
 // sign with RSA SHA256
 
+import mwt from 'miniwebtoken';
+import { TTL_DAY, SINCE_2026 } from 'miniwebtoken';
+
 const privateKey = fs.readFileSync('private.key');
 const publicKey = fs.readFileSync('public.key');
 
 const tokenEnv = mwt({alg: 'rs256', privateKey, publicKey });
-tokenEnv.set("foo");
+tokenEnv.set(mwt.expIn(TTL_DAY, SINCE_2026);
 
-const token = tokenEnv.sign({ foo: 'bar' });
+const mwtStr = tokenEnv.sign({ foo: 'bar' });
 ...
-const result = tokenEnv.verify(token);
+const result = tokenEnv.verify(mwtStr);
 ```
 
-Sign asynchronously
+## 1. Initializing
+
+### Create tokenEnv instace.
 ```js
-jwt.sign({ foo: 'bar' }, privateKey, { algorithm: 'RS256' }, function(err, token) {
-  console.log(token);
-});
-```
+import mwt from 'miniwebtoken';
 
-Backdate a jwt 30 seconds
-```js
-var older_token = jwt.sign({ foo: 'bar', iat: Math.floor(Date.now() / 1000) - 30 }, 'shhhhh');
-```
-
-#### Token Expiration (exp claim)
-
-The expiration is not mandatory. But can be added easilyrepresented as a **NumericDate**:
-
-> A JSON numeric value representing the number of seconds from 1970-01-01T00:00:00Z UTC until the specified UTC date/time, ignoring leap seconds.  This is equivalent to the IEEE Std 1003.1, 2013 Edition [POSIX.1] definition "Seconds Since the Epoch", in which each day is accounted for by exactly 86400 seconds, other than that non-integer values can be represented.  See RFC 3339 [RFC3339] for details regarding date/times in general and UTC in particular.
-
-This means that the `exp` field should contain the number of seconds since the epoch.
-
-Signing a token with 1 hour of expiration:
-
-```javascript
-jwt.sign({
-  exp: Math.floor(Date.now() / 1000) + (60 * 60),
-  data: 'foobar'
-}, 'secret');
-```
-
-Another way to generate a token like this with this library is:
-
-```javascript
-jwt.sign({
-  data: 'foobar'
-}, 'secret', { expiresIn: 60 * 60 });
-
-//or even better:
-
-jwt.sign({
-  data: 'foobar'
-}, 'secret', { expiresIn: '1h' });
-```
-
-### jwt.verify(token)
-
-(Asynchronous) If a callback is supplied, function acts asynchronously. The callback is called with the decoded payload if the signature is valid and optional expiration, audience, or issuer are valid. If not, it will be called with the error.
-
-
-> __Warning:__ When the token comes from an untrusted source (e.g. user input or external requests), the returned decoded payload should be treated like any other user input; please make sure to sanitize and only work with properties that are expected
-
-`token` is the JsonWebToken string
-
-`secretOrPublicKey` is a string (utf-8 encoded), buffer, or KeyObject containing either the secret for HMAC algorithms, or the PEM
-encoded public key for RSA and ECDSA.
-If `jwt.verify` is called asynchronous, `secretOrPublicKey` can be a function that should fetch the secret or public key. See below for a detailed example
-
-As mentioned in [this comment](https://github.com/auth0/node-jsonwebtoken/issues/208#issuecomment-231861138), there are other libraries that expect base64 encoded secrets (random bytes encoded using base64), if that is your case you can pass `Buffer.from(secret, 'base64')`, by doing this the secret will be decoded using base64 and the token verification will use the original random bytes.
-
-`options`
-
-* `algorithms`: List of strings with the names of the allowed algorithms. For instance, `["HS256", "HS384"]`. 
-  > If not specified a defaults will be used based on the type of key provided
-  > * secret - ['HS256', 'HS384', 'HS512']
-  > * rsa - ['RS256', 'RS384', 'RS512']
-  > * ec - ['ES256', 'ES384', 'ES512']
-  > * default - ['RS256', 'RS384', 'RS512']
-* `audience`: if you want to check audience (`aud`), provide a value here. The audience can be checked against a string, a regular expression or a list of strings and/or regular expressions. 
-  > Eg: `"urn:foo"`, `/urn:f[o]{2}/`, `[/urn:f[o]{2}/, "urn:bar"]`
-* `complete`: return an object with the decoded `{ payload, header, signature }` instead of only the usual content of the payload.
-* `issuer` (optional): string or array of strings of valid values for the `iss` field.
-* `jwtid` (optional): if you want to check JWT ID (`jti`), provide a string value here.
-* `ignoreExpiration`: if `true` do not validate the expiration of the token.
-* `ignoreNotBefore`...
-* `subject`: if you want to check subject (`sub`), provide a value here
-* `clockTolerance`: number of seconds to tolerate when checking the `nbf` and `exp` claims, to deal with small clock differences among different servers
-* `maxAge`: the maximum allowed age for tokens to still be valid. It is expressed in seconds or a string describing a time span [vercel/ms](https://github.com/vercel/ms). 
-  > Eg: `1000`, `"2 days"`, `"10h"`, `"7d"`. A numeric value is interpreted as a seconds count. If you use a string be sure you provide the time units (days, hours, etc), otherwise milliseconds unit is used by default (`"120"` is equal to `"120ms"`).
-* `clockTimestamp`: the time in seconds that should be used as the current time for all necessary comparisons.
-* `nonce`: if you want to check `nonce` claim, provide a string value here. It is used on Open ID for the ID Tokens. ([Open ID implementation notes](https://openid.net/specs/openid-connect-core-1_0.html#NonceNotes))
-* `allowInvalidAsymmetricKeyTypes`: if true, allows asymmetric keys which do not match the specified algorithm. This option is intended only for backwards compatability and should be avoided.
-
-```js
-// verify a token symmetric - synchronous
-var decoded = jwt.verify(token, 'shhhhh');
-console.log(decoded.foo) // bar
-
-// verify a token symmetric
-jwt.verify(token, 'shhhhh', function(err, decoded) {
-  console.log(decoded.foo) // bar
-});
-
-// invalid token - synchronous
-try {
-  var decoded = jwt.verify(token, 'wrong-secret');
-} catch(err) {
-  // err
+const options = {
+  alg: 'hs256',
+  secretKey: 'testpass',
 }
 
-// invalid token
-jwt.verify(token, 'wrong-secret', function(err, decoded) {
-  // err
-  // decoded undefined
-});
-
-// verify a token asymmetric
-var cert = fs.readFileSync('public.pem');  // get public key
-jwt.verify(token, cert, function(err, decoded) {
-  console.log(decoded.foo) // bar
-});
-
-// verify audience
-var cert = fs.readFileSync('public.pem');  // get public key
-jwt.verify(token, cert, { audience: 'urn:foo' }, function(err, decoded) {
-  // if audience mismatch, err == invalid audience
-});
-
-// verify issuer
-var cert = fs.readFileSync('public.pem');  // get public key
-jwt.verify(token, cert, { audience: 'urn:foo', issuer: 'urn:issuer' }, function(err, decoded) {
-  // if issuer mismatch, err == invalid issuer
-});
-
-// verify jwt id
-var cert = fs.readFileSync('public.pem');  // get public key
-jwt.verify(token, cert, { audience: 'urn:foo', issuer: 'urn:issuer', jwtid: 'jwtid' }, function(err, decoded) {
-  // if jwt id mismatch, err == invalid jwt id
-});
-
-// verify subject
-var cert = fs.readFileSync('public.pem');  // get public key
-jwt.verify(token, cert, { audience: 'urn:foo', issuer: 'urn:issuer', jwtid: 'jwtid', subject: 'subject' }, function(err, decoded) {
-  // if subject mismatch, err == invalid subject
-});
-
-// alg mismatch
-var cert = fs.readFileSync('public.pem'); // get public key
-jwt.verify(token, cert, { algorithms: ['RS256'] }, function (err, payload) {
-  // if token alg != RS256,  err == invalid signature
-});
-
-// Verify using getKey callback
-// Example uses https://github.com/auth0/node-jwks-rsa as a way to fetch the keys.
-var jwksClient = require('jwks-rsa');
-var client = jwksClient({
-  jwksUri: 'https://sandrino.auth0.com/.well-known/jwks.json'
-});
-function getKey(header, callback){
-  client.getSigningKey(header.kid, function(err, key) {
-    var signingKey = key.publicKey || key.rsaPublicKey;
-    callback(null, signingKey);
-  });
-}
-
-jwt.verify(token, getKey, options, function(err, decoded) {
-  console.log(decoded.foo) // bar
-});
-
+const tokenEnv = miniwebtoken(options)
 ```
 
-<details>
-<summary><em></em>Need to peek into a JWT without verifying it? (Click to expand)</summary>
+tokenEnv is a instance, which contains the data for issuing tokens and verifying it, and reconstructing a payload.
 
-### jwt.decode(token [, options])
+`options` should be provided, which contains the algorithm to be used to sign and secret keys.
+> `options` is used only to sign and verify the token. Expiration policies can be set differently, described below.
 
-(Synchronous) Returns the decoded payload without verifying if the signature is valid.
+`secretKey` is a string (utf-8 encoded), buffer, object, or KeyObject containing the secret for HMAC algorithms.
 
-> __Warning:__ This will __not__ verify whether the signature is valid. You should __not__ use this for untrusted messages. You most likely want to use `jwt.verify` instead.
-
-> __Warning:__ When the token comes from an untrusted source (e.g. user input or external request), the returned decoded payload should be treated like any other user input; please make sure to sanitize and only work with properties that are expected
-
-
-`token` is the JsonWebToken string
+For PEM-encoded private key for RSA and ECDSA, privateKey and publicKey should be provided.
 
 `options`:
 
-* `json`: force JSON.parse on the payload even if the header doesn't contain `"typ":"JWT"`.
-* `complete`: return an object with the decoded payload and header.
+* `alg` (default: `hs256`)
+* `secretKey` - Will be used to sign/verify using hs*** algorithm.
+* `privateKey` - Will be used to sign using rs***/ps***/es*** algorithms.
+* `publicKey` - Will be used to verify using rs***/ps***/es*** algorithms.
 
-Example
+### Setting meta keys
 
-```js
-// get the decoded payload ignoring signature, no secretOrPrivateKey needed
-var decoded = jwt.decode(token);
-
-// get the decoded payload and header
-var decoded = jwt.decode(token, {complete: true});
-console.log(decoded.header);
-console.log(decoded.payload)
-```
-
-</details>
-
-## Errors & Codes
-Possible thrown errors during verification.
-Error is the first argument of the verification callback.
-
-### TokenExpiredError
-
-Thrown error if the token is expired.
-
-Error object:
-
-* name: 'TokenExpiredError'
-* message: 'jwt expired'
-* expiredAt: [ExpDate]
+> `meta key` means the data which goes into the token, but doens't appear in payload constructed from it, like signature and expiration timestamp, etc.
 
 ```js
-jwt.verify(token, 'shhhhh', function(err, decoded) {
-  if (err) {
-    /*
-      err = {
-        name: 'TokenExpiredError',
-        message: 'jwt expired',
-        expiredAt: 1408621000
-      }
-    */
-  }
-});
+import mwt from 'miniwebtoken';
+...
+const tokenEnv = mwt({alg: 'hs256', secretKey: 'testpass' };
+
+tokenEnv.set(mwt.expIn(TTL_HOUR, SINCE_2026));
 ```
+mwt.expIn() function is a built-in function to implement TTL(TimeToLive).
+> TTL_HOUR is 3600, mean 1 hour. Token expiration time is set to 1 hour later from now.
+> SINCE_2026 is 1767225600, mean timestamp in seconds from epoch(1970-01-01). Setting this reduces the size of timestamp, by subtract the number from actual timestamp.
 
-### JsonWebTokenError
-Error object:
-
-* name: 'JsonWebTokenError'
-* message:
-  * 'invalid token' - the header or payload could not be parsed
-  * 'jwt malformed' - the token does not have three components (delimited by a `.`)
-  * 'jwt signature is required'
-  * 'invalid signature'
-  * 'jwt audience invalid. expected: [OPTIONS AUDIENCE]'
-  * 'jwt issuer invalid. expected: [OPTIONS ISSUER]'
-  * 'jwt id invalid. expected: [OPTIONS JWT ID]'
-  * 'jwt subject invalid. expected: [OPTIONS SUBJECT]'
+## 2. Signing a payload(including initial key register).
 
 ```js
-jwt.verify(token, 'shhhhh', function(err, decoded) {
-  if (err) {
-    /*
-      err = {
-        name: 'JsonWebTokenError',
-        message: 'jwt malformed'
-      }
-    */
-  }
-});
+const mwtStr = tokenEnv.sign(samplePayload);
 ```
+By initial running of .sign() function, all the names of properties of samplePayload object is registered in the tokenEnv instance.
+Afterwards, recorded key names are to be used to sign a new payload for another user, and to reconstruct payload during verification.
+By this way, names of the properties doesn't go into the token, resulting small token size.
 
-### NotBeforeError
-Thrown if current time is before the nbf claim.
-
-Error object:
-
-* name: 'NotBeforeError'
-* message: 'jwt not active'
-* date: 2018-10-04T16:10:44.000Z
+Or, you can register object keys(== property names) manually:
 
 ```js
-jwt.verify(token, 'shhhhh', function(err, decoded) {
-  if (err) {
-    /*
-      err = {
-        name: 'NotBeforeError',
-        message: 'jwt not active',
-        date: 2018-10-04T16:10:44.000Z
-      }
-    */
-  }
-});
+tokenEnv.set("user_id", "user_name", "user_roles");
+const tokenStr = tokenEnv.sign(samplePayload);
 ```
 
+Once Object keys are registered, token which is created from the tokenEnv instance contains data for the registered properties only.
 
-## Algorithms supported
+Which means even if you give a payload with additional properties, it's gonna be discarded in the token generation.
+
+In case registered property doesn't exist in the payload given, an error occurs.
+
+## 3. Verifying a payload.
+
+```js
+const mwtStr = tokenEnv.sign(samplePayload);
+tokenEnv.verify(mwtStr);
+```
+> Note that there is no need to provide secret key, as it's stored in the tokenEnv instace.
+
+# APIs
+
+## Options for initialization.
+
+### 1. Algorithms supported(for 'alg')
 
 Array of supported algorithms. The following algorithms are currently supported.
 
@@ -400,19 +190,32 @@ Array of supported algorithms. The following algorithms are currently supported.
 | ES384               | ECDSA using P-384 curve and SHA-384 hash algorithm                     |
 | ES512               | ECDSA using P-521 curve and SHA-512 hash algorithm                     |
 
-## Refreshing JWTs
+### 2. `secretKey` should be provided for HS*** algorithms.
 
-First of all, we recommend you to think carefully if auto-refreshing a JWT will not introduce any vulnerability in your system.
+### 3. `privateKey` and `publicKey` should be provided for RS***/PS***/ES*** algorithms.
 
-We are not comfortable including this as part of the library, however, you can take a look at [this example](https://gist.github.com/ziluvatar/a3feb505c4c0ec37059054537b38fc48) to show how this could be accomplished.
-Apart from that example there are [an issue](https://github.com/auth0/node-jsonwebtoken/issues/122) and [a pull request](https://github.com/auth0/node-jsonwebtoken/pull/172) to get more knowledge about this topic.
+> `secretKey`, `privateKey`, `publicKey` is a string (utf-8 encoded), buffer, or KeyObject containing either the secret for HMAC algorithms, or the PEM encoded public key for RSA and ECDSA.
+
+## Errors
+
+To be edited.
+
+### Key incorrect error.
+
+To be edited.
+
+### Token expired error.
+
+To be edited.
 
 # TODO
 
-* X.509 certificate chain is not checked
+To be edited.
 
 ## Issue Reporting
 
 If you have found a bug or if you have a feature request, please report them at this repository issues section. Please do not report security vulnerabilities on the public GitHub issue tracker. The [Responsible Disclosure Program](https://auth0.com/whitehat) details the procedure for disclosing security issues.
 
 ## Author
+Hoon Kook Shim.
+
