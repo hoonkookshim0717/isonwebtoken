@@ -210,7 +210,8 @@ To be edited.
 
 # TODO
 
-To be edited.
+Add built-in function ExpAt().
+Add contact point.
 
 ## Issue Reporting
 
