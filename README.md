@@ -1,58 +1,61 @@
 # miniwebtoken
 Implementation of web token, focused on minimizing the size of the token.
 
-# Characteristics.
-1. signature, numbers(integer or double) and strings can be stored in the token.
-2. Names of the properties of a payload, like 'user_id', or 'user_name' is not stored in the token to reduce the size of token.
-3. Numbers are encoded from number itself(64bit double or integer), not from stringified numbers.
-4. Meta data like expiry timestamp are not mandatory. ExpIn(TTL) or ExpA is available to use.
+## 1. Characteristics.
+1. Signature(hs***/rs***/ps***/es***) and only values(not the name of the property of those) are stored in the token.
+4. Meta data like expiry timestamp are not mandatory. But ExpIn(TTL) or custome functions can be to be applied.
 5. User can set custom post-processing functions for each properties to construct output payload.
+6. User can save even an object to the token, without serialization.
 
-## * Size of the token.
+### 1. Size of the token.
 Example of a token, using hs256 algorithm to sign:
+
 ```js
+/// test01.js
 
-import mwt from 'miniwebtoken';
-import { TTL_HOUR, SINCE_2026 } from 'miniwebtoken';
+import mwt from '../index.js';
 
-const samplePayload = {
-	user_id: 2583,
-	user_nickname: 'KilDong Hong',
-	user_group: -100,
-	user_roles: 187,
-	grade: 1.2,
-}
+const originalPayload = { user_id: 12345, user_name: 'KilDong Hong', user_roles: 0 };
 
-const tokenEnv = mwt({
-	alg: 'hs256',
-	secretKey: 'testpass',
-});
+const tokenEnv = mwt({ alg: 'hs256', secretKey: 'testpass' });
 
-tokenEnv.set(mwt.expIn(TTL_HOUR, SINCE_2026));
-const resultMwtStr = tokenEnv.sign(samplePayload);		
-console.log("Legnth of mwt: ", resultMwtStr.length);    // 88
+const resultMwtStr = tokenEnv.sign(originalPayload);
 
-// In a router.
-const recoveredObj = tokenEnv.verify(resultMwtStr);
+console.log("Resulting mwt: ", resultMwtStr);			// Resulting mwt:  HKxTfDySYpzQJld7PJolG_Gc9HLWYlhWJcqErrW-Kl0.DA5~S2lsRG9uZyBIb25n.
+console.log("Legnth of mwt: ", resultMwtStr.length);	// Legnth of mwt:  65
+
+const extractedPayload = tokenEnv.verify(resultMwtStr);
+
+console.log("The extracted payload: ", extractedPayload);	// The extracted payload:  { user_id: 12345, user_name: 'KilDong Hong', user_roles: 0 }
+
 ```
 
-The size of the token constructed from 'samplePayload' is only 88 bytes, including signature, which is 43 bytes long.
+The size of the token constructed from 'originalPayload' is only 65 bytes, including 43 bytes of signature.
 
+This means the token body is just 22 bytes long.
+
+This is possible by removing names of the properties from the token, and not-stringifying numbers to strings, etc.
+
+### 2. Custom token value generation/interpretation.
+
+By defining a setter/getter function, you can manage the way of storing a value into the token, or interpret the value from the token to create a new property.
+
+### 3. User-registered objects can be inserted to the token.
 
 Instead, names of the properties are stored in the tokenEnv object, and those are used for payload construction during verifying process.
   By this way, security can be improved, by not showing the name of the properties.
    By this feature, resulting payload can contain properties whose source didn't have, like 'isOwner' property(boolean) extracted from 'user_roles' property.
-   
-# Install
+
+### 3. 
+## 2. Usage
+
+### 1. Install
 
 ```bash
 $ npm install miniwebtoken
 ```
 
-
-# Usage
-
-## Overall flow.
+### 2. Overall flow.
 ```js
 // using hmac
 import mwt from 'miniwebtoken';
