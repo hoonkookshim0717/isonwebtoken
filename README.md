@@ -159,10 +159,15 @@ tokenEnv.set(mwt.expIn(TTL_HOUR, SINCE_2026));
 
 mwt.expIn() function is a built-in meta key function to implement TTL(TimeToLive).
 > TTL_HOUR is 3600, meaning 1 hour. Token expiration time is set to 1 hour later from now.
-> SINCE_2026 is 1767225600, meaning timestamp in seconds at 2026-01-01 from epoch(1970-01-01). Setting this reduces the size of timestamp, by subtracting the timestamp from actual timestamp.
+
+> SINCE_2026 is 1767225600, meaning timestamp in seconds at 2026-01-01 from epoch(1970-01-01).
+> 
+> Setting this reduces the size of timestamp, by subtracting the timestamp from actual timestamp.
 
 User can define a setter function, or getter function and register it for specific properties.
+
 If a setter function is set, the value from the property are processed by the function, and the return value of the function goes into the token.
+
 If a getter function is set, the function can verify the value extracted from the token, process it, and modify resulting object.
 
 ```js
