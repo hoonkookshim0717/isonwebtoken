@@ -119,7 +119,6 @@ const result = tokenEnv.verify(mwtStr);
 
 ### 3. Initializing
 
-### Create tokenEnv instace.
 ```js
 import mwt from 'miniwebtoken';
 
@@ -147,7 +146,7 @@ For PEM-encoded private key for RSA and ECDSA, privateKey and publicKey should b
 * `privateKey` - Will be used to sign using rs***/ps***/es*** algorithms.
 * `publicKey` - Will be used to verify using rs***/ps***/es*** algorithms.
 
-### Setting meta keys
+### 4. Setting meta keys, or custom setter/getter functions.
 
 > `meta key` means the data which goes into the token, but doens't appear in payload constructed from it, like signature and expiration timestamp, etc.
 
@@ -162,29 +161,19 @@ mwt.expIn() function is a built-in function to implement TTL(TimeToLive).
 > TTL_HOUR is 3600, mean 1 hour. Token expiration time is set to 1 hour later from now.
 > SINCE_2026 is 1767225600, mean timestamp in seconds from epoch(1970-01-01). Setting this reduces the size of timestamp, by subtract the number from actual timestamp.
 
-## 2. Signing a payload(including initial key register).
+### 5. Signing a payload.
 
 ```js
-const mwtStr = tokenEnv.sign(samplePayload);
+const token = tokenEnv.sign(samplePayload);
 ```
 By initial running of .sign() function, all the names of properties of samplePayload object is registered in the tokenEnv instance.
-Afterwards, recorded key names are to be used to sign a new payload for another user, and to reconstruct payload during verification.
-By this way, names of the properties doesn't go into the token, resulting small token size.
+Afterwards, registered propetry names are to be used to sign a new payload, and to reconstruct payload during verification process.
+By this way, names of the properties don't need to be in the token, resulting small token size.
 
-Or, you can register object keys(== property names) manually:
+> Note that, after initial running of sign() function, if a payload with a new property was given to be signed, the property will be discarded.
+> This means, miniwebtoken produces the token from only registered properties only.
 
-```js
-tokenEnv.set("user_id", "user_name", "user_roles");
-const tokenStr = tokenEnv.sign(samplePayload);
-```
-
-Once Object keys are registered, token which is created from the tokenEnv instance contains data for the registered properties only.
-
-Which means even if you give a payload with additional properties, it's gonna be discarded in the token generation.
-
-In case registered property doesn't exist in the payload given, an error occurs.
-
-## 3. Verifying a payload.
+### 6. Verifying a token and payload reconstruction.
 
 ```js
 const mwtStr = tokenEnv.sign(samplePayload);
@@ -192,11 +181,11 @@ tokenEnv.verify(mwtStr);
 ```
 > Note that there is no need to provide secret key, as it's stored in the tokenEnv instace.
 
-# APIs
+## 3. APIs
 
-## Options for initialization.
+### 1. initialization options.
 
-### 1. Algorithms supported(for 'alg')
+Algorithms supported(for 'alg')
 
 Array of supported algorithms. The following algorithms are currently supported.
 
@@ -215,33 +204,29 @@ Array of supported algorithms. The following algorithms are currently supported.
 | ES384               | ECDSA using P-384 curve and SHA-384 hash algorithm                     |
 | ES512               | ECDSA using P-521 curve and SHA-512 hash algorithm                     |
 
-### 2. `secretKey` should be provided for HS*** algorithms.
+> `secretKey` should be provided for HS*** algorithms.
 
-### 3. `privateKey` and `publicKey` should be provided for RS***/PS***/ES*** algorithms.
+> `privateKey` and `publicKey` should be provided for RS***/PS***/ES*** algorithms.
 
 > `secretKey`, `privateKey`, `publicKey` is a string (utf-8 encoded), buffer, or KeyObject containing either the secret for HMAC algorithms, or the PEM encoded public key for RSA and ECDSA.
 
-## Errors
+### 2. Errors
 
 To be edited.
 
-### Key incorrect error.
+Key incorrect error.
 
 To be edited.
 
-### Token expired error.
+Token expired error.
 
 To be edited.
 
-# TODO
+## 4. TODOs
 
-Add built-in function ExpAt().
-Add contact point.
+## 5. Issue Reporting
 
-## Issue Reporting
+https://
 
-If you have found a bug or if you have a feature request, please report them at this repository issues section. Please do not report security vulnerabilities on the public GitHub issue tracker. The [Responsible Disclosure Program](https://auth0.com/whitehat) details the procedure for disclosing security issues.
-
-## Author
+## 6. Author
 Hoon Kook Shim.
-
