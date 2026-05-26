@@ -21,8 +21,5 @@
   "type": "module",
   "bugs": {
     "url": "https://github.com/hoonkookshim0717/miniwebtoken/issues"
-  },
-  "dependencies": {
-    "node-addon-api": "^8.7.0"
   }
 }
