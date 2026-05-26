@@ -1,6 +1,6 @@
 {
   "name": "miniwebtoken",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "Implementation of a web token, focused on minimizing the size of token.",
   "main": "index.js",
   "scripts": {
@@ -20,7 +20,7 @@
   "license": "MIT",
   "type": "module",
   "bugs": {
-	"url": "https://github.com/hoonkookshim0717/miniwebtoken/issues"
+    "url": "https://github.com/hoonkookshim0717/miniwebtoken/issues"
   },
   "dependencies": {
     "node-addon-api": "^8.7.0"
