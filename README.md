@@ -44,7 +44,7 @@ console.log(token.length);   // 47
 console.log(payload);        // { userSymbol: Symbol(), sampleObject: { bbsR: true, bbsW: true, bbsX: false } }
 ```
 
-By setting user-defined codes and linking any values(primitive values or objects) to the code, token can have reference to the values.
+By setting a user-defined code and linking any value(primitive value or object) to the code, token can have reference to the value.
 
 > Of course, the token does not have information about actual data(primitive values or objects), just the reference to the object.
 >
@@ -53,6 +53,7 @@ By setting user-defined codes and linking any values(primitive values or objects
 ### 3. Pre-processing and Post-processing for the values in the token are possible.
 
 By defining a setter/getter function, user can manage the way of storing a value into the token, or interpreting the value from the token to create a new property.
+Below is an example showing interpreting the value in the token and produce a new property in a resulting object.
 
 ```js
 import mwt from 'miniwebtoken';
@@ -74,9 +75,9 @@ console.log(token.length);  // 70
 console.log(payload);       // { user_id: 12345, user_name: 'Kil Dong Hong', isAdmin: true }
 ```
 
-> Inserting meta data(Data which does not appear on the payload, like expiration timestamp, etc) to the token is possible by this way, and you can set some kind of verification process here.
+> Inserting meta data(Data which does not appear on the payload, like expiration timestamp, etc) to the token is possible by setting setter function, and verifying the data is also possible by setting getter function.
 
-> There are some built-in functions to implement expiration.
+> There are some built-in functions to implement expiration, like expIn().
 
 ## 2. Usage
 
@@ -86,44 +87,38 @@ console.log(payload);       // { user_id: 12345, user_name: 'Kil Dong Hong', isA
 $ npm install miniwebtoken
 ```
 
-```
-
-### 3. Initializing
+### 2. Initializing
 
 ```js
 import mwt from 'miniwebtoken';
 
-const options = { alg: 'hs256', secretKey: 'testpass' }
-const tokenEnv = mwt(options)
+const tokenEnv = mwt({ alg: 'hs256', secretKey: 'testpass' });
 ```
 
-tokenEnv is an instance, which contains the data for issuing tokens and verifying it(signing algorithm, keys for signing and verification, names of the properties, how to process the values, user-registered objects, etc)
+tokenEnv is an instance, which contains the data for issuing tokens and verifying it(signing algorithm, keys for signing and verification).
+
+It also keep the data like names of the properties, how to process the values(getter/setter functions), user-registered objects, etc.
 
 > Unlike jsonwebtoken, tokenEnv instance need to be maintained in your app, as it is used everytime a payload is signed or token is verified.
+> As the data which is removed from the token resides in the instance.
 
-`options` should be provided, in the 'options' object,
+`options` with `alg` property and `secretKey` or `privateKey/publicKey` property should be provided.
 
-'alg' property which designate the algorithm to be used to sign and secret keys should be exist,
+* 'alg' property which designate the algorithm to be used to sign and secret keys should be exist,
 
-'secretKey' should be exist if 'alg' is set to 'hs***' algorithm,
+* 'secretKey' should be exist if 'alg' is set to 'hs***' algorithm,
 
-'privateKey' and 'publicKey' should be exist if 'alg' is set to 'rs***', 'ps***' or 'es***' algorithm.
+* 'privateKey' and 'publicKey' should be exist if 'alg' is set to 'rs***', 'ps***' or 'es***' algorithm.
 
 > `options` is options only for signature. Expiration policies can be set differently, described below.
 
-> `alg` and `secretKey`
-> `secretKey` is a string (utf-8 encoded), buffer, object, or KeyObject containing the secret for HMAC algorithms.
+> `secretKey` or `privateKey/publicKey` is a string (utf-8 encoded), buffer, object, or KeyObject containing the secret for HMAC algorithms.
 
-For PEM-encoded private key for RSA and ECDSA, privateKey and publicKey should be provided.
+> For PEM-encoded private key for RSA and ECDSA, privateKey and publicKey should be provided.
 
 `options`:
 
-* `alg` (default: `hs256`)
-* `secretKey` - Will be used to sign/verify using hs*** algorithm.
-* `privateKey` - Will be used to sign using rs***/ps***/es*** algorithms.
-* `publicKey` - Will be used to verify using rs***/ps***/es*** algorithms.
-
-### 4. Setting meta keys, or custom setter/getter functions.
+### 3. Setting meta keys, or custom setter/getter functions.
 
 `meta key` means the data which goes into the token, but doens't appear in payload constructed from it, like signature and expiration timestamp, etc.
 
@@ -140,41 +135,70 @@ mwt.expIn() function is a built-in meta key function to implement TTL(TimeToLive
 > TTL_HOUR is 3600, meaning 1 hour. Token expiration time is set to 1 hour later from now.
 
 > SINCE_2026 is 1767225600, meaning timestamp in seconds at 2026-01-01 from epoch(1970-01-01).
-> 
-> Setting this reduces the size of timestamp, by subtracting the timestamp from actual timestamp.
+>
+> Setting this reduces the size of timestamp, by subtracting the number from current timestamp from epoch.
 
-User can define a setter function, or getter function and register it for specific properties.
+> setter() function, which is returned from expIn(), inserts modified-expiry-timestamp to the token,
 
-If a setter function is set, the value from the property are processed by the function, and the return value of the function goes into the token.
+> getter() function, which is also returned from the expIn(), evaluates the value from the token, and throw an error or pass it.
 
-If a getter function is set, the function can verify the value extracted from the token, process it, and modify resulting object.
+### 4. Setting user code(s).
+
+Users can set user codes(like 'A' and 'B' in below example), and insert it to the token and use it to revert the object from the token.
 
 ```js
 import mwt from 'miniwebtoken';
-import { TTL_HOUR, SINCE_2026 } from 'miniwebtoken';
-...
-const tokenEnv = mwt({alg: 'hs256', secretKey: 'testpass' };
 
+const admins = { isAdmin: true, bbsR: true, bbsW: true, bbsX: true };
+const users =  { isAdmin: false, bbsR: true, bbsW: true, bbsX: true };
+const guests = { isAdmin: false, bbsR: false, bbsW: false, bbsX: true };
+
+const originalPayload1 = { user_id: 12345, user_name: 'Kil Dong Hong', perm: admins };
+const originalPayload2 = { user_id: 23456, user_name: 'Choon Hyang Sung', perm: users };
+const originalPayload3 = { user_id: 34567, user_name: 'Guestes', perm: guests };
+
+const tokenEnv = mwt({ alg: 'hs256', secretKey: 'testpass' });
+
+tokenEnv.setUserCode('A', admins);
+tokenEnv.setUserCode('B', users);
+tokenEnv.setUserCode('Z', guests);
+
+const token1 = tokenEnv.sign(originalPayload1);		
+const payload1 = tokenEnv.verify(token1);
+
+const token2 = tokenEnv.sign(originalPayload2);		
+const payload2 = tokenEnv.verify(token2);
+
+const token3 = tokenEnv.sign(originalPayload3);
+const payload3 = tokenEnv.verify(token3);
 ```
+
+> User code is a string, with characters base64url encoding permits. A-Z, a-z, 0-9, '-' and '_'.
+
+> User code can be composed of multiple characters, so a user can register as many codes as user want. like 'A', 'AA', or 'aA01d-_'.
 
 ### 5. Signing a payload.
 
 ```js
 const token = tokenEnv.sign(samplePayload);
 ```
+
 By initial running of .sign() function, all the names of properties of samplePayload object is registered in the tokenEnv instance.
+
 Afterwards, registered propetry names are to be used to sign a new payload, and to reconstruct payload during verification process.
+
 By this way, names of the properties don't need to be in the token, resulting small token size.
 
-> Note that you don't need to specify secret key, because it's in the tokenEnv object.
-> Note that, after initial running of sign() function, if a payload with a new property was given to be signed, the property will be discarded.
-> This means, miniwebtoken produces the token from only registered properties only.
+> For most of the properties of the samplePayload objects, default setter/getter function is set by default.
+
+If you did set custom getter/setter functions for an property before sign(), the getter/setter function will be set for the property.
 
 ### 6. Verifying a token and payload reconstruction.
 
 ```js
 const payload = tokenEnv.verify(mwtStr);
 ```
+
 > Note that there is no need to provide secret key, as it's stored in the tokenEnv instace.
 
 ## 3. APIs
@@ -220,9 +244,10 @@ To be edited.
 
 ## 4. TODOs
 
+
 ## 5. Issue Reporting
 
-https://
+https://github.com/hoonkookshim0717/miniwebtoken/issues
 
 ## 6. Author
 Hoon Kook Shim.
