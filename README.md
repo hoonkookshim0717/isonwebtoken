@@ -23,7 +23,7 @@ The size of the token constructed from 'originalPayload' is only 69 bytes, inclu
 
 This means the token body is just 26 bytes long.
 
-### 2. User can register anything(value or objects), and store it in the token for minimum of only 2 bytes of token size.
+### 2. User can register anything(value or objects), and store it in the token for just 2 bytes.
 ```js
 import mwt from 'miniwebtoken';
 
@@ -52,9 +52,31 @@ By setting user-defined codes and linking any values(primitive values or objects
 
 ### 3. Pre-processing and Post-processing for the values in the token are possible.
 
-By defining a setter/getter function, you can manage the way of storing a value into the token, or interpreting the value from the token to create a new property.
+By defining a setter/getter function, user can manage the way of storing a value into the token, or interpreting the value from the token to create a new property.
 
-Inserting meta data(Data which does not appear on the payload, like expiration timestamp, etc) to the token is possible by this way, and you can set some kind of verification process here.
+```js
+import mwt from 'miniwebtoken';
+
+const originalPayload = { user_id: 12345, user_name: 'Kil Dong Hong', user_roles: 12001 };
+const tokenEnv = mwt({ alg: 'hs256', secretKey: 'testpass' });
+
+tokenEnv.set('user_roles', {
+	getter(value, targetObj) {
+		if(value > 10000) targetObj.isAdmin = true;
+		else targetObj.isAdmin = false;
+	}
+})
+const token = tokenEnv.sign(originalPayload);		
+const payload = tokenEnv.verify(token);
+
+console.log(token);         // mts6mRU18fAXKHfJ28J61T-zmAJq2WdeT_WLCQlNOsk.DA5~S2lsIERvbmcgSG9uZw.C7h
+console.log(token.length);  // 70
+console.log(payload);       // { user_id: 12345, user_name: 'Kil Dong Hong', isAdmin: true }
+```
+
+> Inserting meta data(Data which does not appear on the payload, like expiration timestamp, etc) to the token is possible by this way, and you can set some kind of verification process here.
+
+> There are some built-in functions to implement expiration.
 
 ## 2. Usage
 
@@ -64,44 +86,6 @@ Inserting meta data(Data which does not appear on the payload, like expiration t
 $ npm install miniwebtoken
 ```
 
-### 2. Overall flow.
-```js
-// using hmac
-import mwt from 'miniwebtoken';
-import { TTL_HOUR, SINCE_EPOCH } from 'miniwebtoken';
-
-const samplePayload = { user_id: 1, user_name: 'KilDong Hong' };
-
-// Initializing.
-const tokenEnv = mwt({ alg: 'hs256', secretKey: 'testpass' });
-tokenEnv.set(mwt.expIn(TTL_HOUR));    // Set expiration time an hour after token generation.
-
-// Signing.(Including initializing)
-const mwtStr = mwt.sign(payload);    // In a login handler or refresh handler.
-...
-
-// Verifying and reconstruct payload.
-const result = mwt.verify(mwtStr);    // In a router.
-
-```
-
-Get a signed token with RSA SHA25 algorithm, and verifying it.
-
-```js
-// sign with RSA SHA256
-
-import mwt from 'miniwebtoken';
-import { TTL_DAY, SINCE_2026 } from 'miniwebtoken';
-
-const privateKey = fs.readFileSync('private.key');
-const publicKey = fs.readFileSync('public.key');
-
-const tokenEnv = mwt({alg: 'rs256', privateKey, publicKey });
-tokenEnv.set(mwt.expIn(TTL_DAY, SINCE_2026);
-
-const mwtStr = tokenEnv.sign({ foo: 'bar' });
-...
-const result = tokenEnv.verify(mwtStr);
 ```
 
 ### 3. Initializing
@@ -110,17 +94,25 @@ const result = tokenEnv.verify(mwtStr);
 import mwt from 'miniwebtoken';
 
 const options = { alg: 'hs256', secretKey: 'testpass' }
-
 const tokenEnv = mwt(options)
 ```
 
-tokenEnv is an instance, which contains the data for issuing tokens and verifying it, and reconstructing a payload.
+tokenEnv is an instance, which contains the data for issuing tokens and verifying it(signing algorithm, keys for signing and verification, names of the properties, how to process the values, user-registered objects, etc)
 
+> Unlike jsonwebtoken, tokenEnv instance need to be maintained in your app, as it is used everytime a payload is signed or token is verified.
 
-`options` should be provided, which contains the algorithm to be used to sign and secret keys.
-> `options` is used only to sign and verify the token. Expiration policies can be set differently, described below.
+`options` should be provided, in the 'options' object,
 
-`secretKey` is a string (utf-8 encoded), buffer, object, or KeyObject containing the secret for HMAC algorithms.
+'alg' property which designate the algorithm to be used to sign and secret keys should be exist,
+
+'secretKey' should be exist if 'alg' is set to 'hs***' algorithm,
+
+'privateKey' and 'publicKey' should be exist if 'alg' is set to 'rs***', 'ps***' or 'es***' algorithm.
+
+> `options` is options only for signature. Expiration policies can be set differently, described below.
+
+> `alg` and `secretKey`
+> `secretKey` is a string (utf-8 encoded), buffer, object, or KeyObject containing the secret for HMAC algorithms.
 
 For PEM-encoded private key for RSA and ECDSA, privateKey and publicKey should be provided.
 
