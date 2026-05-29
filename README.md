@@ -217,6 +217,27 @@ const payload = tokenEnv.verify(mwtStr);
 
 > Note that there is no need to provide secret key, as it's stored in the tokenEnv instace.
 
+## 2. Error handling
+
+miniwebtoken throw 2 kinds of errors.
+
+The one is the conventional way, `throw new Error(...)`, and the other is by `throw ERRORS.TOKEN_EXPIRED`.
+
+conventional way of throwing new Error() is used in the app
+```js
+try {
+	tokenEnv.verify(accessToken);
+} catch(error) {
+	if(error === mwt.ERRORS.TOKEN_EXPIRED) refreshToken();
+	else if(error === mwt.ERRORS.INVALID_SIGNATURE) inactivateUser();
+	...
+}
+
+```
+
+
+
+
 ## 3. APIs
 
 ### 1. initialization options.
@@ -246,17 +267,6 @@ Array of supported algorithms. The following algorithms are currently supported.
 
 > `secretKey`, `privateKey`, `publicKey` is a string (utf-8 encoded), buffer, or KeyObject containing either the secret for HMAC algorithms, or the PEM encoded public key for RSA and ECDSA.
 
-### 2. Errors
-
-To be edited.
-
-Key incorrect error.
-
-To be edited.
-
-Token expired error.
-
-To be edited.
 
 ## 4. TODOs
 
