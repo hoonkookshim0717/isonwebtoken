@@ -47,13 +47,11 @@ const resultMwtStr = tokenEnv.sign(samplePayload);
 console.log("Resulting mwt: ", resultMwtStr);
 console.log("Legnth of mwt: ", resultMwtStr.length);
 
-const faultyMwtStr = resultMwtStr + "BC";
-
 // In a router.
 let recoveredObj;
 
 try {
-	recoveredObj = tokenEnv.verify(faultyMwtStr);
+	recoveredObj = tokenEnv.verify(resultMwtStr);
 } catch(error) {
 	if(error === mwt.ERRORS.INVALID_SIGNATURE) console.log("Invalid signature detected.");
 	else if(error === mwt.ERRORS.TOKEN_EXPIRED) console.log("Refresh needed");
