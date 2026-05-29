@@ -1,5 +1,5 @@
 import mwt from '../index.js';
-import { TTL_HOUR } from '../index.js';
+import { TTL_HOUR, SINCE_2026 } from '../index.js';
 
 const sampleObject = {
 	isWritable: true,
@@ -29,10 +29,10 @@ const samplePayload = {
 const tokenEnv = mwt({
 	alg: 'hs256',
 	secretKey: 'testpass',
-	baseTimestamp: mwt.SINCE_2026,
+	baseTimestamp: SINCE_2026,
 });
 
-tokenEnv.set(mwt.expIn(TTL_HOUR, mwt.SINCE_2026));
+tokenEnv.set(mwt.expIn(TTL_HOUR));
 tokenEnv.set(mwt.issuedAt("issued_at"));
 
 tokenEnv.setUserCode('A', sampleObject);
