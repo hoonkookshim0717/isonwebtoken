@@ -248,7 +248,7 @@ All errors, users can use, are listed below in this README file.
 
 ### 1. initialization options.
 
-Algorithms supported(for 'alg')
+* `alg` : Algorithms supported(for 'alg')
 
 Array of supported algorithms. The following algorithms are currently supported.
 
@@ -272,6 +272,14 @@ Array of supported algorithms. The following algorithms are currently supported.
 > `privateKey` and `publicKey` should be provided for RS***/PS***/ES*** algorithms.
 
 > `secretKey`, `privateKey`, `publicKey` is a string (utf-8 encoded), buffer, or KeyObject containing either the secret for HMAC algorithms, or the PEM encoded public key for RSA and ECDSA.
+
+* `baseTimestamp` : SINCE_EPOCH, SINCE_2000, SINCE_2020, SINCE_2026 is possible.(All is properties of miniwebtoken).
+
+  All above are timestamp in seconds at specified year 1st January, and can be used to minimize token size.
+
+  tokenEnv instance stores the timestamp in internal cache, and setter function can use it(subtract it from real timestamp) to reduce token size.
+
+  And, getter function should re-calculate(add it from extracted timestamp) to recover acturl timestamp.
 
 ### 2. Error Codes.
 List of comparable errors.
