@@ -9,6 +9,8 @@ function miniWebToken(settings) {
 
 // Built-in fuctions.
 miniWebToken.expIn = Key.expIn;
+miniWebToken.issuedAt = Key.issuedAt;
+
 miniWebToken.ERRORS = ERRORS;
 
 // Constatns for ttl.
